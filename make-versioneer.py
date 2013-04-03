@@ -1,15 +1,23 @@
+#!/usr/bin/python
+
+try:
+    import argparse
+except ImportError:
+    # pre Python 2.7 compatibility
+    import optparse
 
 def unquote(s):
     return s.replace("%", "%%")
 def ver(s):
     return s.replace("@VERSIONEER@", "0.7+")
 
-def create_script():
-    vcs = "git"
-    if vcs not in ("git",):
+def create_script(vcs):
+    if vcs not in ("git", "hg",):
         raise ValueError("Unhandled revision-control system '%s'" % vcs)
     f = open("versioneer.py", "w")
-    def get(fn): return open(fn, "r").read()
+    def get(fn):
+        with open(fn, "r") as f_:
+            return f_.read()
     f.write(ver(get("src/header.py")))
     f.write('VCS = "%s"\n' % vcs)
     f.write("IN_LONG_VERSION_PY = False\n")
@@ -36,5 +44,22 @@ def create_script():
     f.close()
 
 if __name__ == '__main__':
-    create_script()
+    vcs_desc = "Make versioneer.py for your project"
+    vcs_args = ['-V', '--vcs']
+    vcs_kwargs = {
+            'dest': 'vcs',
+            'default': 'git',
+            'help': "The VCS to use. Options: git (default), hg",
+    }
+    try:
+        argparse
+        parser = argparse.ArgumentParser(description=vcs_desc)
+        parser.add_argument(*vcs_args, **vcs_kwargs)
+        options = parser.parse_args()
+    except NameError:
+        parser = optparse.OptionParser(description=vcs_desc, usage="make-versioneer.py [-h] [-V VCS]")
+        parser.add_option(*vcs_args, **vcs_kwargs)
+        (options, args) = parser.parse_args()
 
+    vcs = options.vcs
+    create_script(vcs)
